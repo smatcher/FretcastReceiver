@@ -290,9 +290,14 @@ setTimeout(resizeCanvas, 100);
 
 const castCtx = cast.framework.CastReceiverContext.getInstance();
 castCtx.addCustomMessageListener(NAMESPACE, event => {
-  state = event.data;
-  if (!document.getElementById('neck').width) resizeCanvas();
-  updateUI(state);
+  try {
+    state = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+    console.log('Message received, key=' + state.key + ' beat=' + state.beat);
+    if (!document.getElementById('neck').width) resizeCanvas();
+    updateUI(state);
+  } catch (e) {
+    console.error('Message handler error:', e, event.data);
+  }
 });
 castCtx.start({ disableIdleTimeout: true });
 </script>
