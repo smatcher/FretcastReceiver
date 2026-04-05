@@ -57,6 +57,23 @@
     #next-key-label { font-size: 24px; color: #444; }
     #next-key-label b { color: #B07010; font-weight: 500; }
     #bar-label { margin-left: auto; font-size: 22px; color: #2A2A2A; }
+
+    /* ── Debug overlay ──────────────────────────────────────── */
+    #dbg {
+      position: fixed;
+      bottom: 20px; left: 20px;
+      background: rgba(0,0,0,0.75);
+      color: #0f0;
+      font-family: monospace;
+      font-size: 18px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      max-width: 700px;
+      z-index: 999;
+      pointer-events: none;
+    }
+    #dbg div { margin-bottom: 2px; }
+    #dbg .err { color: #f66; }
   </style>
 </head>
 <body>
@@ -82,9 +99,23 @@
   </div>
 </div>
 
+<div id="dbg"></div>
+
 <script src="//www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
 <script>
 'use strict';
+
+// ── Debug overlay ──────────────────────────────────────────────────────────────
+const MAX_LOG_LINES = 8;
+function dbg(msg, isErr) {
+  console[isErr ? 'error' : 'log'](msg);
+  const el = document.getElementById('dbg');
+  const line = document.createElement('div');
+  if (isErr) line.className = 'err';
+  line.textContent = new Date().toLocaleTimeString() + '  ' + msg;
+  el.appendChild(line);
+  while (el.children.length > MAX_LOG_LINES) el.removeChild(el.firstChild);
+}
 
 const NAMESPACE    = 'urn:x-cast:com.fretcast.app';
 const AMBER        = '#F59E0B';
@@ -288,18 +319,27 @@ setTimeout(resizeCanvas, 100);
 
 // ── Cast ───────────────────────────────────────────────────────────────────────
 
+dbg('Script loaded, registering Cast listener…');
+
 const castCtx = cast.framework.CastReceiverContext.getInstance();
+
 castCtx.addCustomMessageListener(NAMESPACE, event => {
   try {
     state = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-    console.log('Message received, key=' + state.key + ' beat=' + state.beat);
+    dbg('MSG key=' + state.key + ' beat=' + state.beat + ' notes=' + (state.noteSequence || []).length);
     if (!document.getElementById('neck').width) resizeCanvas();
     updateUI(state);
   } catch (e) {
-    console.error('Message handler error:', e, event.data);
+    dbg('MSG ERROR: ' + e.message, true);
   }
 });
+
+castCtx.addEventListener(cast.framework.system.EventType.READY, () => dbg('Cast READY'));
+castCtx.addEventListener(cast.framework.system.EventType.ERROR, e => dbg('Cast ERROR: ' + JSON.stringify(e), true));
+
+dbg('Calling castCtx.start()…');
 castCtx.start({ disableIdleTimeout: true });
+dbg('castCtx.start() returned');
 </script>
 </body>
 </html>
