@@ -162,8 +162,9 @@ function startFlash(bpm) {
 function drawNeck() {
   if (!state) return;
   const canvas = document.getElementById('neck');
-  const ctx    = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
+  if (W <= 0 || H <= 0) return;
+  const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, W, H);
 
   const fo      = state.fretOffset || 0;
@@ -274,6 +275,9 @@ let lastNoteIdx = -1;
 function updateUI(s) {
   document.getElementById('waiting').style.display = 'none';
   document.getElementById('exercise').style.display = 'flex';
+  // Resize canvas now that the exercise div is visible
+  const canvas = document.getElementById('neck');
+  if (canvas.width <= 0 || canvas.height <= 0) resizeCanvas();
 
   document.getElementById('key-label').textContent   = s.key;
   document.getElementById('scale-label').textContent = s.scale;
@@ -325,7 +329,12 @@ const castCtx = cast.framework.CastReceiverContext.getInstance();
 
 castCtx.addCustomMessageListener(NAMESPACE, event => {
   try {
-    state = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+    const msg = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+    if (msg.type === 'debug') {
+      document.getElementById('dbg').style.display = msg.enabled ? 'block' : 'none';
+      return;
+    }
+    state = msg;
     dbg('MSG key=' + state.key + ' beat=' + state.beat + ' notes=' + (state.noteSequence || []).length);
     if (!document.getElementById('neck').width) resizeCanvas();
     updateUI(state);
